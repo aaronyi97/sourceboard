@@ -186,7 +186,7 @@ def _call_once(path, params, method=None):
             for k, v in params.items():
                 args += ['--param', f'{k}={v}']
         args += ['--timeout', '45', '--full']
-        env = dict(SAFE_ENV, TIKHUB_TASK=task, TIKHUB_BUDGET_USD=str(budget), TIKHUB_QUIET='1')
+        env = dict(SAFE_ENV, TIKHUB_TASK=task, TIKHUB_BUDGET_USD=str(budget), TIKHUB_QUIET='1', SOURCEBOARD_BUDGET_CHECKED='1')
         uncertain = False
         try:
             incidents.paid_used()
@@ -258,8 +258,7 @@ def _call_once(path, params, method=None):
                 total = task_spent(task)
                 marker = ROOT / ('.budget-half-' + hashlib.sha256(task.encode()).hexdigest()[:12])
                 if budget != float('inf') and total >= budget/2 and not marker.exists():
-                    with (ROOT / 'PROGRESS.md').open('a') as out:
-                        out.write(f'\n- {now()} {task}预算过半：累计估算 ${total:.4f} / ${budget:.2f}；下一步：继续核账，预算到顶停止扩量。\n')
+                    print(f'提示：今天的估算花费已过预算一半（${total:.4f} / ${budget:.2f}），到上限后会停止付费调用。', file=sys.stderr)
                     marker.write_text(now())
 
 

@@ -166,9 +166,9 @@ def emit_pending():
     result=safe(pending)
     if result is None: return {'count':None,'items':[],'storage_error':True}
     if result['count']:
-        print('\n⚠ 搜索基建异常：'+str(result['count'])+' 条尚未告知用户',file=sys.stderr)
+        print('\n⚠ 渠道异常：有 '+str(result['count'])+' 条还没告诉用户',file=sys.stderr)
         for row in result['items']: print(f"  [{row['id']}] {row['summary']}",file=sys.stderr)
-        print('请在本次回复开头告诉用户影响和建议；告诉后运行 sourceboard incidents notify <编号>。全部未解决项：sourceboard incidents。\n',file=sys.stderr)
+        print('（给 Agent）请在回复开头告诉用户哪里坏了、影响什么、建议怎么办；说完运行 sourceboard incidents notify <编号>。查看全部：sourceboard incidents。\n',file=sys.stderr)
     return result
 
 

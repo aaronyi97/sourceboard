@@ -293,7 +293,7 @@ ROUTES = {
     'wechat': ('/api/v1/wechat_search/v2/fetch_search', 'post', lambda kw, o: {'keyword': kw, 'business_type': 'article', 'sort': 'default', 'raw': False}, wechat_parse),
     'youtube': ('/api/v1/youtube/web_v2/get_general_search_v2', 'get',
                 lambda kw, o: {'keyword': kw, 'type': 'video', 'sort_by': 'upload_date' if o.sort == 'new' else 'relevance'}, youtube_parse),
-    'reddit': ('/api/v1/reddit/app/fetch_dynamic_search', 'get', lambda kw, o: {'query': kw, 'search_type': 'post', 'sort': 'RELEVANCE'}, reddit_parse),
+    'reddit': ('/api/v1/reddit/app/fetch_dynamic_search', 'get', lambda kw, o: {'query': kw, 'search_type': 'post', 'sort': 'RELEVANCE', 'need_format': 'true'}, reddit_parse),
     'tiktok': ('/api/v1/tiktok/app/v3/fetch_video_search_result', 'get', lambda kw, o: {'keyword': kw, 'count': 20, 'offset': (o.page - 1) * 20, 'sort_type': 0, 'region': o.region}, tiktok_parse),
     'x': ('/api/v1/twitter/web/fetch_search_timeline', 'get', lambda kw, o: {'keyword': kw, 'search_type': 'Latest' if o.sort == 'new' else 'Top'}, x_parse),
 }

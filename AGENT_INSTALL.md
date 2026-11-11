@@ -75,8 +75,10 @@ sourceboard --help
 4. 让用户**在他自己的终端里**运行下面这条命令，按提示粘贴钥匙（输入时不显示）、设每日预算、选常用平台：
 
    ```sh
-   sourceboard setup
+   ~/.local/bin/sourceboard setup
    ```
+
+   要给他这条带完整路径的命令：刚装好时，`~/.local/bin` 多半还不在他终端的 PATH 里，只写 `sourceboard setup` 会提示找不到命令。顺便告诉他终端在哪：macOS 按 Command+空格 搜“终端”打开，Linux 打开系统自带的终端。粘贴命令、回车，照提示做。
 
    你不要替他运行这条命令，因为你没法替他输入钥匙。等他告诉你做完了。
 
@@ -151,8 +153,8 @@ sourceboard board <结果目录> --conclusion <结果目录>/conclusion.md --ope
 
 ## 以后要配可选项时
 
-- **YouTube 官方钥匙（免费）**：让用户在 Google Cloud Console 新建项目、启用 YouTube Data API v3、创建 API 密钥，然后在自己的终端运行 `sourceboard setup --youtube-key-stdin`，粘贴后回车。
-- **知乎官方工具**：按知乎开放平台的官方说明安装和授权。装好后 SourceBoard 会自动找到它；找不到时在配置里设 `ZHIHU_CLI=工具的完整路径`。
+- **YouTube 官方钥匙（免费）**：让用户在 Google Cloud Console 新建项目、启用 YouTube Data API v3、创建 API 密钥，然后在自己的终端运行 `~/.local/bin/sourceboard setup --youtube-key-stdin`，粘贴后回车。
+- **知乎官方工具**：按知乎开放平台（https://developer.zhihu.com/ ）的官方说明安装和授权。装好后 SourceBoard 会自动找到它；找不到时在配置里设 `ZHIHU_CLI=工具的完整路径`。
 - **yt-dlp**：`pipx install yt-dlp` 或 `brew install yt-dlp`。
 - **ffmpeg**：`brew install ffmpeg` 或系统包管理器。只有下载 B站视频才需要。
 

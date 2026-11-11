@@ -18,7 +18,7 @@
   TIKHUB_NO_CACHE=1 跳过缓存; TIKHUB_CACHE_TTL_HOURS=24 调整时长(0禁用)。
 单价表: lib/prices.json，按接口最长前缀匹配，未知接口按 $0.01 估算。金额都是估算，不是账单。
 成功但空的返回仍按收费估算；超时按可能扣费估算；明确的 HTTP/业务失败按 0 估算。
-提醒只写 stderr，不拦截、不暂停、不改退出码。
+提醒只写 stderr；直接调用付费接口时，今天的估算花费超过每日预算上限会拒绝（search/grab 另有自己的预算拦截）。
 结果与账本在数据目录的 tikhub/ 下（默认 ~/SourceBoard/tikhub/）。
 """
 import json
@@ -545,9 +545,29 @@ def compact_account(d):
     return d
 
 
+def over_daily_budget(rows, cost):
+    """直接用 `sourceboard api` 调付费接口时也守每日预算。search/grab 走 paid.py，那边已经按预算拦过，不重复拦。"""
+    if os.environ.get("SOURCEBOARD_BUDGET_CHECKED") == "1":
+        return ""
+    budget = number(os.environ.get("TIKHUB_BUDGET_USD") or sbconfig.get("SOURCEBOARD_DAILY_BUDGET_USD"), 0)
+    if budget <= 0:
+        return ""
+    today = datetime.now().strftime("%Y-%m-%d")
+    spent = sum(cost_of(r) for r in rows if r.get("ts", "").startswith(today))
+    if spent + cost > budget + 1e-9:
+        return (f"预算不足：今天已估算 ${spent:.4f}，本接口约 ${cost:.4f}，每日上限 ${budget:g}。"
+                "要放宽就运行 sourceboard setup --yes --budget 新的数字")
+    return ""
+
+
 def failure_ttl(out):
-    """账户查询失败后多久内不再重试：被限流或钥匙问题等 10 分钟；网络一时断开只等 30 秒。"""
-    return 30 if "网络请求失败" in str(out) else 600
+    """账户查询失败后多久内不再重试：被限流 10 分钟；钥匙错了不冷却（用户改好就能马上重试）；网络一时断开只等 30 秒。"""
+    text = str(out)
+    if "网络请求失败" in text:
+        return 30
+    if re.search(r"HTTP 40[13]\b", text):
+        return 0
+    return 600
 
 
 def base_url(args, env):
@@ -562,7 +582,7 @@ def http_json(method, url, key, body, timeout):
     超时和 HTTP 错误不换、不重试（可能已经扣费）。"""
     import socket, urllib.request, urllib.error
     from urllib.parse import urlsplit
-    headers = {"Authorization": "Bearer " + key, "Accept": "application/json", "User-Agent": "sourceboard/0.1"}
+    headers = {"Accept": "application/json", "User-Agent": "sourceboard/0.1"}
     data = None
     if body is not None:
         data = json.dumps(body).encode("utf-8")
@@ -575,6 +595,8 @@ def http_json(method, url, key, body, timeout):
         if n:
             time.sleep(1.5)
         req = urllib.request.Request(target, data=data, method=method, headers=headers)
+        # 钥匙用“不随跳转转发”的方式放：万一接口返回跳转到别的地址，钥匙不会被带过去。
+        req.add_unredirected_header("Authorization", "Bearer " + key)
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return 0, json.loads(r.read().decode("utf-8"))
@@ -650,12 +672,14 @@ def run_script(script, args, env, force_account=False):
             cached = {}
         base = option(args, "--base-url", env.get("TIKHUB_BASE_URL", ""))
         output = option(args, "--output")
+        # 缓存按钥匙区分：用户换了一把钥匙（比如第一次复制错了重跑 setup），不能拿旧钥匙的失败结果糊弄他。
+        key_fp = hashlib.sha256(env.get("TIKHUB_API_KEY", "").encode()).hexdigest()[:16]
         age = time.time() - cached.get("time", 0)
         ttl = 60 if cached.get("rc") == 0 else failure_ttl(cached.get("out", ""))
         # Explicit fresh/output requests bypass successful cache entries only;
         # neither option can bypass a shared account failure cooldown.
         use_cache = not (force_account or output) or cached.get("rc") != 0
-        if use_cache and cached.get("base") == base and 0 <= age < ttl and "out" in cached:
+        if use_cache and cached.get("base") == base and cached.get("key_fp") == key_fp and 0 <= age < ttl and "out" in cached:
             doc = json.loads(cached["out"])
             doc["account_cache"] = {"hit": True, "age_seconds": round(age, 2)}
             return cached["rc"], json.dumps(doc, ensure_ascii=False), cached.get("err", "")
@@ -687,7 +711,7 @@ def run_script(script, args, env, force_account=False):
         if not response_info(rc, cache_out)[0]:
             rc = rc or 2
             out = cache_out
-        target.write_text(json.dumps({"attempt": started, "time": time.time(), "base": base,
+        target.write_text(json.dumps({"attempt": started, "time": time.time(), "base": base, "key_fp": key_fp,
                                       "rc": rc, "out": cache_out, "err": err}, ensure_ascii=False))
         return rc, out, err
 
@@ -800,6 +824,10 @@ def main():
                 except OSError as error:
                     rc, out = 2, json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False) + "\n"
         else:
+            if billable and not help_request:
+                over = over_daily_budget(rows, price_for(endpoint)[0])
+                if over:
+                    die(over)
             preflight = refresh_account(env) if billable and not help_request else None
             if preflight:
                 rc, out, err = preflight

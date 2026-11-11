@@ -24,12 +24,14 @@ else
   echo "自检没有通过，请运行 python3 -B $DIR/tests/test_offline.py 看具体哪一项。" >&2; exit 1
 fi
 
+CMD="sourceboard"
 case ":$PATH:" in
   *":$BIN:"*) ;;
-  *) echo "提示：$BIN 不在 PATH 里。可以用完整路径 $BIN/sourceboard，或把下面这行加进你的 shell 配置："
+  *) CMD="$BIN/sourceboard"
+     echo "提示：$BIN 不在 PATH 里。可以用完整路径 $CMD，或把下面这行加进你的 shell 配置："
      echo "  export PATH=\"$BIN:\$PATH\"" ;;
 esac
 
 echo
-echo "下一步（必须）：在你自己的终端运行  sourceboard setup"
+echo "下一步（必须）：在你自己的终端运行  $CMD setup"
 echo "它会先说明能做什么、要花什么钱，再带你把 TikHub 钥匙配好。"

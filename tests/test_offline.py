@@ -121,6 +121,69 @@ class Guards(unittest.TestCase):
             with self.assertRaises(ValueError):
                 sbconfig.check_base(bad)
 
+    def test_key_not_forwarded_on_redirect(self):
+        # 本机起两个服务：第一个回跳转，第二个记录收到的请求头。钥匙只能出现在第一个。
+        import http.server
+        import threading
+        seen = {}
+
+        class Target(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                seen['target'] = self.headers.get('Authorization')
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b'{}')
+
+            def log_message(self, *a):
+                pass
+
+        target = http.server.HTTPServer(('127.0.0.1', 0), Target)
+
+        class Jump(Target):
+            def do_GET(self):
+                seen['first'] = self.headers.get('Authorization')
+                self.send_response(302)
+                self.send_header('Location', f'http://127.0.0.1:{target.server_port}/x')
+                self.end_headers()
+
+        jump = http.server.HTTPServer(('127.0.0.1', 0), Jump)
+        for server in (target, jump):
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            rc, _ = tikhub.http_json('GET', f'http://127.0.0.1:{jump.server_port}/', 'FAKEKEY', None, 5)
+        finally:
+            for server in (jump, target):
+                server.shutdown()
+                server.server_close()
+        self.assertEqual(rc, 0)
+        self.assertEqual(seen.get('first'), 'Bearer FAKEKEY')
+        self.assertIsNone(seen.get('target'))
+
+    def test_wrong_key_is_not_cooled_down(self):
+        self.assertEqual(tikhub.failure_ttl('{"ok": false, "error": "HTTP 401:{\\"detail\\": \\"bad key\\"}"}'), 0)
+        self.assertEqual(tikhub.failure_ttl('网络请求失败:URLError'), 30)
+        self.assertEqual(tikhub.failure_ttl('HTTP 429:slow down'), 600)
+
+    def test_direct_api_respects_daily_budget(self):
+        from datetime import datetime
+        today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        rows = [{'ts': today, 'est_usd': 0.99}]
+        old = {k: os.environ.get(k) for k in ('SOURCEBOARD_DAILY_BUDGET_USD', 'SOURCEBOARD_BUDGET_CHECKED', 'TIKHUB_BUDGET_USD')}
+        try:
+            os.environ.pop('TIKHUB_BUDGET_USD', None)
+            os.environ.pop('SOURCEBOARD_BUDGET_CHECKED', None)
+            os.environ['SOURCEBOARD_DAILY_BUDGET_USD'] = '1'
+            self.assertIn('预算不足', tikhub.over_daily_budget(rows, 0.02))
+            self.assertEqual(tikhub.over_daily_budget(rows, 0.005), '')
+            os.environ['SOURCEBOARD_BUDGET_CHECKED'] = '1'  # search/grab 已经自己拦过
+            self.assertEqual(tikhub.over_daily_budget(rows, 0.02), '')
+        finally:
+            for k, v in old.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
     def test_post_is_read_only(self):
         env = {'TIKHUB_API_KEY': 'k' * 40}
         rc, out, _ = tikhub.run_post(['post', '--path', '/api/v1/douyin/app/v3/delete_something', '--json', '{}'], env)

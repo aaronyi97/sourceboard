@@ -55,7 +55,7 @@ SourceBoard 本身免费、开源。但平台数据大部分来自 [TikHub](http
 | TikHub 钥匙 | **必须，第一步就配** | 没有它，搜索用不了，只有少数平台能免费抓单条 |
 | Python 3.9 以上 | 必须 | macOS 和大多数 Linux 自带。不需要 pip 装任何东西 |
 | YouTube 官方钥匙 | 可选 | 免费。配了之后 YouTube 详情和频道主页不花钱 |
-| 知乎官方工具 | 可选 | 有免费额度。配了之后知乎搜索不走 TikHub |
+| [知乎官方工具](https://developer.zhihu.com/) | 可选 | 有免费额度。配了之后知乎搜索不走 TikHub |
 | yt-dlp | 可选 | YouTube、TikTok、Instagram、Facebook 的免费路线和现成字幕要用 |
 | ffmpeg | 可选 | 只有下载 B站视频时才用 |
 
@@ -113,6 +113,9 @@ sourceboard usage --by day --since 7d
 ## 看板长什么样
 
 每次搜索或抓取都会在结果目录里生成一个 `board.html`，暗色、单个文件、双击就能看。一页三层：
+
+![看板上半部分：这次搜了什么、Agent 的结论（搜“AI 漫剧”，六个中文平台 102 条，约 $0.032）](docs/images/board-example.png)
+
 
 1. **这次搜了什么。** 每个平台搜到几条、走的哪条通道、花了多少。没搜到的平台排在最前面，写明原因。接口报错不等于“网上没有”，所以失败不会被藏起来。
 2. **结论。** Agent 读完资料后写的结论和依据。
