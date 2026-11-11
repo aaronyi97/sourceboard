@@ -247,7 +247,7 @@ def reddit_parse(doc):
         sub = (p.get('subreddit') or {}).get('prefixedName', '')
         author = (p.get('authorInfo') or {}).get('name', '')
         out.append(item('reddit', p.get('id') or p['permalink'], title=plain(p['postTitle']), text=plain((p.get('content') or {}).get('markdown'))[:800],
-                        author=' · '.join(x for x in (author, sub) if x), url=p.get('url') or 'https://www.reddit.com' + p['permalink'],
+                        author=' · '.join(x for x in (author, sub) if x), url=p['permalink'] if p['permalink'].startswith('http') else 'https://www.reddit.com' + p['permalink'],  # url 字段常是视频或外链，不是帖子本身
                         published_at=str(p.get('createdAt') or '')[:19],
                         cover='', stats=stats(score=p.get('score'), comments=p.get('commentCount'), upvote_ratio=p.get('upvoteRatio'))))
     return out

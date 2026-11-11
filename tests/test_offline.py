@@ -113,6 +113,18 @@ class Board(unittest.TestCase):
             self.assertNotIn(bad, text)  # 样式和脚本都在文件里
 
 
+class GrabBoard(unittest.TestCase):
+    def test_grab_board_lists_failures_on_top(self):
+        data = {'title': 't', 'kind': 'grab', 'sources': [], 'items': [
+            {'platform': 'bilibili', 'title': '示例视频', 'caps': {'content': 'success', 'subtitles': 'connector_failed'}},
+            {'platform': 'x', 'title': '好的那条', 'caps': {'content': 'success', 'comments': 'success'}}]}
+        text = board.render(data, Path(TMP) / 'grab-board.html').read_text(encoding='utf-8')
+        top = text[:text.index('id="data"')]
+        self.assertIn('其中 1 条有部分内容没拿到', top)
+        self.assertIn('字幕：接口出错', top)
+        self.assertNotIn('好的那条', top)
+
+
 class Guards(unittest.TestCase):
     def test_key_only_goes_to_tikhub(self):
         sbconfig.check_base('https://api.tikhub.io')

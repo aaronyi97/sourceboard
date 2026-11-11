@@ -114,7 +114,7 @@ details{margin-top:8px}summary{cursor:pointer;color:var(--mut);font-size:14px}ol
 <h1>__TITLE__</h1>
 <p class="mut">__SUB__</p>
 __ALERT__
-<h2>一、这次搜了什么</h2>
+<h2>一、这次__WHAT__了什么</h2>
 __SOURCES__
 <h2>二、结论</h2>
 <div class="box">__CONCLUSION__</div>
@@ -198,12 +198,31 @@ def local_time(value):
         return str(value or '')[:16].replace('T', ' ')
 
 
+def grab_summary(items):
+    """直接抓链接的看板没有“搜了哪些平台”，第一层改成：抓了几条、哪几条有东西没拿到、为什么。"""
+    failed = ('connector_failed', 'auth_failed', 'rate_limited')
+    gaps = [(it, [(k, v) for k, v in (it.get('caps') or {}).items() if v in failed]) for it in items]
+    gaps = [(it, g) for it, g in gaps if g]
+    if not gaps:
+        return f'<p class="mut">直接抓取了 {len(items)} 个链接，没有出错的项（没去取的项见各卡片）。</p>'
+    lines = ''.join('<li>[' + esc(it.get('id')) + '] ' + esc(PLATFORMS.get(it.get('platform'), it.get('platform'))) + ' · '
+                    + esc((it.get('title') or it.get('url') or '')[:40]) + '：'
+                    + '；'.join(esc(CAPS.get(k, k) + '：' + STATUS.get(v, v)) for k, v in g) + '</li>' for it, g in gaps)
+    return (f'<p>直接抓取了 {len(items)} 个链接，其中 {len(gaps)} 条有部分内容没拿到。接口出错或被限流，不等于原帖没有：</p>'
+            f'<ul>{lines}</ul>')
+
+
 def render(data, out, open_browser=False):
     """data 见 README「看板数据格式」。写出单个 HTML 文件，返回它的路径。"""
     out = Path(out).expanduser().resolve()
     sources = data.get('sources') or []
     rows, bad = source_rows(sources)
-    table = ('<table><tr><th>平台</th><th>结果</th><th>通道</th><th>花费（估算）</th><th>说明</th></tr>' + rows + '</table>') if sources else '<p class="mut">这页是直接抓取链接的结果，没有搜索环节。</p>'
+    for i, it in enumerate(data.get('items') or [], 1):
+        it.setdefault('id', f'{i:02d}')
+    if sources:
+        table = '<table><tr><th>平台</th><th>结果</th><th>通道</th><th>花费（估算）</th><th>说明</th></tr>' + rows + '</table>'
+    else:
+        table = grab_summary(data.get('items') or [])
     alert = ''
     if bad:
         alert = '<div class="alert"><b>有 ' + str(len(bad)) + ' 个渠道没搜到，不等于网上没有：</b>' + '；'.join(
@@ -211,12 +230,10 @@ def render(data, out, open_browser=False):
     conclusion = markdown(data.get('conclusion_md')) or '<p class="mut">还没有结论。让你的 Agent 读完下面的资料后写一份结论，再运行：<code>sourceboard board ' + esc(out.parent) + ' --conclusion 结论.md</code></p>'
     sub = ' · '.join(x for x in (('搜索词：' + data['query']) if data.get('query') else '', '生成时间：' + local_time(data.get('created_at')),
                                  f'估算花费：${float(data.get("estimated_cost_usd") or 0):.3f}（按单价表估算，不是账单）') if x)
-    for i, it in enumerate(data.get('items') or [], 1):
-        it.setdefault('id', f'{i:02d}')
     payload = dict(data, page_path=str(out), platform_names=PLATFORMS, stat_labels=LABELS, cap_status=CAP_STATUS, cap_names=CAPS)
     blob = json.dumps(payload, ensure_ascii=False, default=str).replace('<', '\\u003c')  # 数据里的尖括号一律转义，不可能提前结束脚本块
     page = (PAGE.replace('__TITLE__', esc(data.get('title') or 'SourceBoard 看板')).replace('__SUB__', esc(sub)).replace('__ALERT__', alert)
-            .replace('__SOURCES__', table).replace('__CONCLUSION__', conclusion).replace('__DATA__', blob))
+            .replace('__WHAT__', '搜' if sources else '抓').replace('__SOURCES__', table).replace('__CONCLUSION__', conclusion).replace('__DATA__', blob))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding='utf-8')
     if open_browser:
