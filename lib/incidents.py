@@ -168,7 +168,7 @@ def emit_pending():
     if result['count']:
         print('\n⚠ 搜索基建异常：'+str(result['count'])+' 条尚未告知用户',file=sys.stderr)
         for row in result['items']: print(f"  [{row['id']}] {row['summary']}",file=sys.stderr)
-        print('请在本次回复开头告诉用户 影响和建议；告诉后运行 sourceboard incidents notify <编号>。全部未解决项：sourceboard incidents。\n',file=sys.stderr)
+        print('请在本次回复开头告诉用户影响和建议；告诉后运行 sourceboard incidents notify <编号>。全部未解决项：sourceboard incidents。\n',file=sys.stderr)
     return result
 
 
