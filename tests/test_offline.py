@@ -76,6 +76,15 @@ class Parsers(unittest.TestCase):
         self.assertEqual(search.num('3.4万'), 34000)
         self.assertIsNone(search.num('没有数字'))
 
+    def test_required_params(self):
+        from types import SimpleNamespace
+        o = SimpleNamespace(page=1, sort='default', region='US')
+        self.assertTrue({'keyword', 'order', 'page', 'page_size'} <= set(search.ROUTES['bilibili'][2]('x', o)))  # 缺 order 会报 422
+
+    def test_card_prefixes_unique(self):
+        self.assertEqual(len(set(search.PREFIX.values())), len(search.ORDER))
+        self.assertEqual(set(search.PREFIX), set(search.ORDER))
+
     def test_platform_names(self):
         self.assertEqual(search.pick_platforms('抖音, 小红书，B站 twitter'), ['douyin', 'xiaohongshu', 'bilibili', 'x'])
         with self.assertRaises(ValueError):

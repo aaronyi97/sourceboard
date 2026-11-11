@@ -28,6 +28,8 @@ ALIASES = {'dy': 'douyin', '抖音': 'douyin', 'xhs': 'xiaohongshu', '小红书'
            '微博': 'weibo', '知乎': 'zhihu', '公众号': 'wechat', 'weixin': 'wechat', '微信': 'wechat', 'yt': 'youtube',
            'twitter': 'x', '推特': 'x'}
 ORDER = list(NAMES)
+PREFIX = {'douyin': 'dy', 'xiaohongshu': 'xhs', 'bilibili': 'bili', 'weibo': 'wb', 'zhihu': 'zh', 'wechat': 'wx',
+          'youtube': 'yt', 'reddit': 'rd', 'tiktok': 'tt', 'x': 'x'}  # 卡片编号前缀，各平台不能重复
 
 
 # ---------- 小工具 ----------
@@ -285,14 +287,14 @@ ROUTES = {
     'xiaohongshu': ('/api/v1/xiaohongshu/app_v2/search_notes', 'get',
                     lambda kw, o: {'keyword': kw, 'page': o.page, 'sort_type': {'hot': 'popularity_descending', 'new': 'time_descending'}.get(o.sort, 'general')}, xhs_parse),
     'bilibili': ('/api/v1/bilibili/web/fetch_general_search', 'get',
-                 lambda kw, o: {'keyword': kw, 'page': o.page, 'page_size': 20, **({'order': {'hot': 'click', 'new': 'pubdate'}[o.sort]} if o.sort in ('hot', 'new') else {})}, bili_parse),
+                 lambda kw, o: {'keyword': kw, 'order': {'hot': 'click', 'new': 'pubdate'}.get(o.sort, 'totalrank'), 'page': o.page, 'page_size': 20}, bili_parse),
     'weibo': ('/api/v1/weibo/app/fetch_search_all', 'get', lambda kw, o: {'query': kw, 'search_type': 1, 'page': o.page}, weibo_parse),
-    'zhihu': ('/api/v1/zhihu/web/fetch_article_search_v3', 'get', lambda kw, o: {'keyword': kw, 'limit': 20}, zhihu_parse),
+    'zhihu': ('/api/v1/zhihu/web/fetch_article_search_v3', 'get', lambda kw, o: {'keyword': kw, 'limit': 20, 'offset': (o.page - 1) * 20}, zhihu_parse),
     'wechat': ('/api/v1/wechat_search/v2/fetch_search', 'post', lambda kw, o: {'keyword': kw, 'business_type': 'article', 'sort': 'default', 'raw': False}, wechat_parse),
     'youtube': ('/api/v1/youtube/web_v2/get_general_search_v2', 'get',
                 lambda kw, o: {'keyword': kw, 'type': 'video', 'sort_by': 'upload_date' if o.sort == 'new' else 'relevance'}, youtube_parse),
     'reddit': ('/api/v1/reddit/app/fetch_dynamic_search', 'get', lambda kw, o: {'query': kw, 'search_type': 'post', 'sort': 'RELEVANCE'}, reddit_parse),
-    'tiktok': ('/api/v1/tiktok/app/v3/fetch_video_search_result', 'get', lambda kw, o: {'keyword': kw, 'count': 20, 'sort_type': 0, 'region': o.region}, tiktok_parse),
+    'tiktok': ('/api/v1/tiktok/app/v3/fetch_video_search_result', 'get', lambda kw, o: {'keyword': kw, 'count': 20, 'offset': (o.page - 1) * 20, 'sort_type': 0, 'region': o.region}, tiktok_parse),
     'x': ('/api/v1/twitter/web/fetch_search_timeline', 'get', lambda kw, o: {'keyword': kw, 'search_type': 'Latest' if o.sort == 'new' else 'Top'}, x_parse),
 }
 
@@ -425,7 +427,7 @@ def main(argv=None):
         row, rows = results[p]
         sources.append(row)
         for i, r in enumerate(rows, 1):
-            r['id'] = f'{p[:2]}{i:02d}'
+            r['id'] = f'{PREFIX[p]}{i:02d}'
             items.append(r)
     data = {'schema': 1, 'kind': 'search', 'title': o.title or f'搜索：{o.keyword}', 'query': o.keyword, 'sort': o.sort,
             'created_at': core.now(), 'sources': sources, 'items': items, 'estimated_cost_usd': round(sum(s['cost_usd'] for s in sources), 6),

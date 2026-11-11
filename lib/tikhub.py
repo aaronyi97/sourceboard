@@ -280,7 +280,7 @@ def refresh_account(env):
                 recent = json.loads((OUT_ROOT / ".saving/account-response.json").read_text())
             except (OSError, ValueError):
                 recent = {}
-        if recent.get('rc') and 0 <= time.time() - recent.get('time', 0) < 600:
+        if recent.get('rc') and 0 <= time.time() - recent.get('time', 0) < failure_ttl(recent.get('out', '')):
             return recent['rc'], recent['out'], recent.get('err', '')
         with saving_lock():
             rows, state = read_ledger(), read_state()
@@ -545,6 +545,11 @@ def compact_account(d):
     return d
 
 
+def failure_ttl(out):
+    """账户查询失败后多久内不再重试：被限流或钥匙问题等 10 分钟；网络一时断开只等 30 秒。"""
+    return 30 if "网络请求失败" in str(out) else 600
+
+
 def base_url(args, env):
     base = (option(args, "--base-url") or env.get("TIKHUB_BASE_URL") or sbconfig.DEFAULT_BASE).rstrip("/")
     sbconfig.check_base(base)
@@ -565,7 +570,10 @@ def http_json(method, url, key, body, timeout):
     host = urlsplit(url).hostname
     urls = [url] + [url.replace("//" + host, "//" + h, 1) for h in sbconfig.TIKHUB_HOSTS if h != host]
     last = ""
-    for target in urls:
+    attempts = [urls[0], urls[0]] + urls[1:]  # 连接刚建立就被掐断时，同一域名先隔 1.5 秒再试一次
+    for n, target in enumerate(attempts):
+        if n:
+            time.sleep(1.5)
         req = urllib.request.Request(target, data=data, method=method, headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -643,7 +651,7 @@ def run_script(script, args, env, force_account=False):
         base = option(args, "--base-url", env.get("TIKHUB_BASE_URL", ""))
         output = option(args, "--output")
         age = time.time() - cached.get("time", 0)
-        ttl = 60 if cached.get("rc") == 0 else 600
+        ttl = 60 if cached.get("rc") == 0 else failure_ttl(cached.get("out", ""))
         # Explicit fresh/output requests bypass successful cache entries only;
         # neither option can bypass a shared account failure cooldown.
         use_cache = not (force_account or output) or cached.get("rc") != 0

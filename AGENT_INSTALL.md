@@ -126,7 +126,7 @@ sourceboard search "用户的题目" --json
 
 ## 第 6 步：写结论，打开第一张看板
 
-读输出里 `results` 指向的 `results.json`，基于真实搜到的内容给用户写一份简短结论（Markdown）：这个题目各平台谁在做、哪几条数据最好、有什么共同点、你拿不准的是什么。每个判断带上卡片编号（如 `[do03]`），方便用户对照。存成结果目录里的 `conclusion.md`，然后：
+读输出里 `results` 指向的 `results.json`，基于真实搜到的内容给用户写一份简短结论（Markdown）：这个题目各平台谁在做、哪几条数据最好、有什么共同点、你拿不准的是什么。每个判断带上卡片编号（如 `[dy03]`），方便用户对照。存成结果目录里的 `conclusion.md`，然后：
 
 ```sh
 sourceboard board <结果目录> --conclusion <结果目录>/conclusion.md --open
