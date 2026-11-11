@@ -74,8 +74,8 @@ Agent 会按 [AGENT_INSTALL.md](AGENT_INSTALL.md) 带着你走完 7 步：先把
 想自己装也可以：
 
 ```sh
-git clone https://github.com/aaronyi97/sourceboard.git ~/sourceboard
-cd ~/sourceboard && ./install.sh
+git clone https://github.com/aaronyi97/sourceboard.git ~/.sourceboard
+cd ~/.sourceboard && ./install.sh
 sourceboard setup        # 说明 → 粘贴 TikHub 钥匙 → 设预算 → 选常用平台 → 实测
 ```
 

@@ -77,7 +77,7 @@ def append(root, rows, row, event):
     # A readable folded view; event log remains authoritative after any interrupted write.
     view={r['id']:r for r in rows};view[row['id']]=row
     # The hook reads a compact pending-only checkpoint, so a frequently repeated
-    # incident cannot make years of event history slow down 用户 conversations.
+    # incident cannot make years of event history slow down conversations.
     pending_temp=root/'pending.json.part'
     pending_temp.write_text(json.dumps({'event_bytes':(root/'events.jsonl').stat().st_size,
                                         'items':[r for r in view.values() if r['status']=='pending']},ensure_ascii=False)+'\n')
@@ -89,7 +89,7 @@ def append(root, rows, row, event):
 
 def add(*, severity, summary, category='manual', platform='unknown', capability='search', endpoint='', evidence='', source='', daily=False, occurrences=1):
     if severity not in ('高','中','低'): raise ValueError('严重度必须是高、中或低')
-    if not summary.strip(): raise ValueError('需要给 用户 看的中文说明')
+    if not summary.strip(): raise ValueError('需要给用户看的中文说明')
     root=directory();epoch=time.time();ts=stamp(epoch)
     with locked(root):
         rows=load(root)
@@ -166,9 +166,9 @@ def emit_pending():
     result=safe(pending)
     if result is None: return {'count':None,'items':[],'storage_error':True}
     if result['count']:
-        print('\n⚠ 搜索基建异常：'+str(result['count'])+' 条尚未告知 用户',file=sys.stderr)
+        print('\n⚠ 搜索基建异常：'+str(result['count'])+' 条尚未告知用户',file=sys.stderr)
         for row in result['items']: print(f"  [{row['id']}] {row['summary']}",file=sys.stderr)
-        print('请在本次回复开头告诉 用户 影响和建议；告诉后运行 sourceboard incidents notify <编号>。全部未解决项：sourceboard incidents。\n',file=sys.stderr)
+        print('请在本次回复开头告诉用户 影响和建议；告诉后运行 sourceboard incidents notify <编号>。全部未解决项：sourceboard incidents。\n',file=sys.stderr)
     return result
 
 
@@ -365,43 +365,9 @@ def finish_paid():
         paid_error('account',type(e).__name__)
 
 
-EXPECTED_MONTHLY = {'xiaohongshu','bilibili','weibo','zhihu','wechat_channels'}
-
-
-def monthly_expected(result):
-    if result.get('platform') in EXPECTED_MONTHLY:return True
-    # The encrypted WeChat probe is expected to fail; the other normal article
-    # in selftest-urls.txt must still raise an incident when it newly breaks.
-    if result.get('platform')=='wechat' and 'kJRaBFPVB-KO6ennSP9MLA' in result.get('url',''):return True
-    if expected_content(result.get('error','')):return True
-    if result.get('out'):
-        try:
-            import core
-            meta=json.loads(core.external_path(Path(result['out'])/'meta.json').read_text())
-            return any(expected_content(m.get('note','')) for m in meta.get('methods',[]) if m.get('capability')=='content')
-        except (OSError,ValueError,KeyError):pass
-    return False
-
-
-def monthly(path):
-    path=Path(path)
-    try:
-        data=json.loads(path.read_text())
-        results=data['results']
-        bad=sorted({r['platform'] for r in results if not r.get('ok') and not monthly_expected(r)})
-        for platform in bad:
-            observe(severity='中',category='monthly_failure',platform=platform,capability='selftest',endpoint='selftest',source='monthly-selftest',evidence=str(path),
-                    summary=f'每月免费自检发现 {PLATFORMS.get(platform,platform)} 出现基线以外的新失败，相关内容可能抓不到；建议让 Agent 查看这次自检结果并修复。')
-        return f"{data['usable']}/{data['items']} 可用"+('；新失败：'+'、'.join(bad)+'，已写入异常台账' if bad else '；和基线一致，不用管')
-    except (OSError,ValueError,KeyError,TypeError):
-        observe(severity='中',category='monthly_failure',platform='shared',capability='selftest',endpoint='selftest',source='monthly-selftest',evidence=str(path),
-                summary='每月免费自检没有产出可读结果，搜索能力本月没有完成检查；建议查看同目录错误日志并重新自检。')
-        return '自检没产出结果，已写入异常台账；请看 .err 日志'
-
-
 def command(argv):
-    parser=argparse.ArgumentParser(prog='sourceboard incidents',description='搜索异常：先告诉 用户，再标记已告知；修好后关闭。')
-    parser.add_argument('action',nargs='?',default='list',choices=('list','add','notify','resolve','monthly'))
+    parser=argparse.ArgumentParser(prog='sourceboard incidents',description='搜索异常：先告诉用户，再标记已告知；修好后关闭。')
+    parser.add_argument('action',nargs='?',default='list',choices=('list','add','notify','resolve'))
     parser.add_argument('ident',nargs='?')
     parser.add_argument('--json',action='store_true')
     parser.add_argument('--severity',choices=('高','中','低'),default='中')
@@ -411,14 +377,11 @@ def command(argv):
     parser.add_argument('--endpoint',default='');parser.add_argument('--evidence',default='')
     args=parser.parse_args(argv)
     if args.action=='add':
-        if not args.summary:parser.error('add 需要 --summary 给 用户 的中文说明')
+        if not args.summary:parser.error('add 需要 --summary 给用户看的中文说明')
         result={'item':add(severity=args.severity,summary=args.summary,platform=args.platform,source=args.source,capability=args.capability,category=args.category,endpoint=args.endpoint,evidence=args.evidence)}
     elif args.action in ('notify','resolve'):
         if not args.ident:parser.error('需要异常编号；notify 也可用 all')
         result={'items':transition(args.ident,'notified' if args.action=='notify' else 'resolved',args.note)}
-    elif args.action=='monthly':
-        if not args.ident:parser.error('monthly 需要自检 JSON 文件路径')
-        result={'message':monthly(args.ident)}
     else: result={'items':listing()}
     result['pending_incidents']=emit_pending()
     if args.json:print(json.dumps(result,ensure_ascii=False))

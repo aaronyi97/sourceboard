@@ -20,8 +20,8 @@ Send the repository link to your agent and ask it to follow `AGENT_INSTALL.md`. 
 Or manually:
 
 ```sh
-git clone https://github.com/aaronyi97/sourceboard.git ~/sourceboard
-cd ~/sourceboard && ./install.sh
+git clone https://github.com/aaronyi97/sourceboard.git ~/.sourceboard
+cd ~/.sourceboard && ./install.sh
 sourceboard setup
 sourceboard search "your topic" -p youtube,reddit,x --open
 ```

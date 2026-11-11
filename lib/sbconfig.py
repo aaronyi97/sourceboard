@@ -46,8 +46,22 @@ def save(values):
 
 
 def home():
-    """数据目录：抓回的内容、账本、看板都在这里。"""
-    return Path(get('SOURCEBOARD_HOME') or Path.home() / 'SourceBoard').expanduser()
+    """数据目录：抓回的内容、账本、看板都在这里。
+
+    默认 ~/SourceBoard。macOS 默认的磁盘不分大小写，如果程序本身就克隆在 ~/sourceboard，
+    两者其实是同一个目录，数据会写进程序目录里；这时自动改用 ~/SourceBoard-data。
+    """
+    chosen = get('SOURCEBOARD_HOME')
+    if chosen:
+        return Path(chosen).expanduser()
+    default = Path.home() / 'SourceBoard'
+    program = LIB.parent.resolve()
+    same = str(default).lower() == str(program).lower()
+    try:
+        same = same or (default.exists() and os.path.samefile(default, program))
+    except OSError:
+        pass
+    return Path.home() / 'SourceBoard-data' if same else default
 
 
 def sub(name):

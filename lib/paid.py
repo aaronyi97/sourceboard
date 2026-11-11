@@ -147,6 +147,8 @@ def _call_once(path, params, method=None):
     ctx = CURRENT.get()
     if ctx and ctx.no_paid:
         raise Fail('--no-paid：TikHub 已禁用', 'not_attempted')
+    if not sbconfig.get('TIKHUB_API_KEY'):
+        raise Fail('还没配置 TikHub 钥匙：在你自己的终端运行 sourceboard setup', 'auth_failed')
     external_path(ROOT)
     ROOT.mkdir(parents=True, exist_ok=True)
     task = os.environ.get('TIKHUB_TASK') or 'sourceboard-' + time.strftime('%Y%m%d')

@@ -55,11 +55,11 @@ git --version
 ```
 
 - 系统要是 macOS 或 Linux，Python 3.9 以上。不满足就停下来告诉用户缺什么。
-- 检查 `~/sourceboard` 和 `~/.config/sourceboard` 是否已存在。已存在就问用户：更新（`git pull`）还是换个目录。
+- 检查 `~/.sourceboard`（程序）、`~/SourceBoard`（数据）和 `~/.config/sourceboard`（配置）是否已存在。已存在就问用户：更新（`git pull`）还是换个目录。
 
 ```sh
-git clone https://github.com/aaronyi97/sourceboard.git ~/sourceboard
-cd ~/sourceboard && ./install.sh
+git clone https://github.com/aaronyi97/sourceboard.git ~/.sourceboard
+cd ~/.sourceboard && ./install.sh
 sourceboard --help
 ```
 
@@ -138,7 +138,7 @@ sourceboard board <结果目录> --conclusion <结果目录>/conclusion.md --ope
 
 ## 第 7 步：装上技能，交代以后怎么用
 
-把仓库里的 `skill/` 目录装进你自己的技能目录（名字用 `sourceboard`），这样以后新对话里你也知道怎么用。例如 Claude Code 是 `~/.claude/skills/sourceboard/`，其他 Agent 用各自的技能目录；用软链接指向 `~/sourceboard/skill` 即可，更新仓库时技能跟着更新。你的环境不支持技能的话，把 `skill/SKILL.md` 的要点记进你的长期说明里。
+把仓库里的 `skill/` 目录装进你自己的技能目录（名字用 `sourceboard`），这样以后新对话里你也知道怎么用。例如 Claude Code 是 `~/.claude/skills/sourceboard/`，其他 Agent 用各自的技能目录；用软链接指向 `~/.sourceboard/skill` 即可，更新仓库时技能跟着更新。你的环境不支持技能的话，把 `skill/SKILL.md` 的要点记进你的长期说明里。
 
 最后给用户一段交接，说清：
 
